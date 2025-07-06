@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interaktywna Checklista Rozwoju: Application Architect Mobile</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        .checklist-item {
+            display: flex;
+            align-items: flex-start;
+            padding: 8px 0;
+        }
+        .checklist-item input[type="checkbox"] {
+            margin-top: 6px;
+            flex-shrink: 0;
+            height: 1.25rem;
+            width: 1.25rem;
+            border-radius: 0.25rem;
+            border-color: #cbd5e1;
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out;
+        }
+        .checklist-item input[type="checkbox"]:checked {
+            background-color: #4f46e5;
+            border-color: #4f46e5;
+        }
+        .checklist-item label {
+            margin-left: 0.75rem;
+            cursor: pointer;
+            line-height: 1.6;
+            width: 100%;
+        }
+        .checklist-item label a {
+            color: #4f46e5;
+            text-decoration: none;
+            border-bottom: 1px solid #a5b4fc;
+            transition: color 0.2s, border-color 0.2s;
+            font-weight: 500;
+        }
+        .checklist-item label a:hover {
+            color: #4338ca;
+            border-color: #4338ca;
+        }
+        .module-progress {
+            height: 8px;
+            background-color: #e5e7eb;
+            border-radius: 9999px;
+            overflow: hidden;
+        }
+        .progress-bar {
+            height: 100%;
+            background-color: #4f46e5;
+            transition: width 0.3s ease-in-out;
+        }
+        ul {
+            list-style: none;
+            padding-left: 0;
+        }
+        .nested-list {
+             padding-left: 1.5rem;
+        }
+        .module-title {
+            font-size: 1.875rem;
+            font-weight: 700;
+            color: #111827;
+        }
+        .section-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #374151;
+        }
+        .topic-title {
+            font-weight: 600;
+            color: #4b5563;
+        }
+        .topic-description {
+            font-weight: 400;
+            color: #4b5563;
+            display: block;
+            margin-top: 4px;
+        }
+        .resource-item {
+            color: #6b7280;
+        }
+        .resource-item .icon {
+            display: inline-block;
+            width: 1rem;
+            height: 1rem;
+            margin-right: 0.25rem;
+            vertical-align: text-bottom;
+        }
+        .gemini-btn {
+            background-color: #eef2ff;
+            color: #4338ca;
+            border: 1px solid #c7d2fe;
+            padding: 2px 8px;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            margin-left: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+        }
+        .gemini-btn:hover {
+            background-color: #e0e7ff;
+            border-color: #a5b4fc;
+        }
+        .gemini-project-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: 1rem;
+            background-color: #4f46e5;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .gemini-project-btn:hover {
+            background-color: #4338ca;
+        }
+        #gemini-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        #gemini-modal.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .modal-content {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 0.75rem;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            transform: scale(0.95);
+            transition: transform 0.3s ease;
+        }
+        #gemini-modal.visible .modal-content {
+            transform: scale(1);
+        }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #4f46e5;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 2rem auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800">
+    <div class="container mx-auto p-4 md:p-8 max-w-5xl">
+        <div id="checklist-container" class="space-y-10">
+            <!-- Checklist will be rendered here by JS -->
+        </div>
+    </div>
+
+    <!-- Gemini Modal -->
+    <div id="gemini-modal">
+        <div class="modal-content">
+            <h3 id="modal-title" class="text-2xl font-bold mb-4 text-slate-800"></h3>
+            <div id="modal-body"></div>
+            <button id="modal-close-btn" class="mt-6 w-full bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-2 px-4 rounded-lg">
+                Zamknij
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const learningPlan = [
+            {
+                id: 'intro', title: 'Wprowadzenie: Ścieżka od Dewelopera do Architekta', description: 'Przejście od roli starszego dewelopera do architekta aplikacji mobilnych to ewolucja, a nie rewolucja. Wymaga ona poszerzenia perspektywy z pytania "jak coś zaimplementować?" na "dlaczego i co powinniśmy zbudować?". Analiza przedstawionego ogłoszenia o pracę na stanowisko Application Architect Mobile jasno pokazuje, że jest to rola hybrydowa. Z jednej strony, architekt jest odpowiedzialny za projektowanie przepływów, interfejsów i całościowych rozwiązań w kluczowych kontekstach biznesowych, takich jak sprzedaż produktów czy utrzymanie klienta. Z drugiej strony, pozostaje on głęboko zakorzeniony w technologii, poświęcając do 50% swojego czasu na aktywne wsparcie zespołu deweloperskiego, w tym programowanie i przeglądy kodu. Oznacza to, że skuteczny architekt nie może być oderwany od praktyki; musi być technicznym liderem, który rozumie zarówno kod, jak i strategię biznesową.',
+                children: [
+                    { id: 'intro-ref-1', title: 'Application Architect Mobile - internal posting (1).pdf', type: 'docs', link: '#' },
+                ]
+            },
+            {
+                id: 'module1',
+                title: 'Moduł 1: Mistrzostwo w Technologiach Klienckich',
+                description: 'Fundamentem roli architekta jest dogłębna, praktyczna znajomość technologii, z których korzystają zespoły. Bez tego fundamentu podejmowane decyzje architektoniczne byłyby czysto teoretyczne i oderwane od rzeczywistości. Ten moduł ma na celu ugruntowanie i rozszerzenie wiedzy technicznej do poziomu eksperckiego, co jest kluczowym wymaganiem stanowiska.',
+                children: [
+                    {
+                        id: 'sec1-1', title: 'Sekcja 1.1: React Native dla Zaawansowanych',
+                        description: 'Ogłoszenie podkreśla znajomość React Native, a rola architekta wymaga podejmowania decyzji dotyczących aktualizacji bibliotek i stosowania wzorców. Oznacza to konieczność wyjścia poza podstawy i zrozumienia frameworka na poziomie pozwalającym na świadomą optymalizację i rozwój.',
+                        children: [
+                            { id: 't1-1-1', title: 'Podstawy i Konfiguracja Środowiska', description: 'Pierwszym krokiem jest pełne zrozumienie ekosystemu i zależności niezbędnych do rozpoczęcia pracy z React Native. Obejmuje to instalację i konfigurację Node.js, menedżera pakietów (npm lub yarn), Java Development Kit (JDK) dla rozwoju na Androida oraz Xcode dla iOS. Kluczowe jest zrozumienie procesu inicjalizacji nowego projektu za pomocą komendy `npx react-native init MyFirstApp` oraz poznanie struktury generowanych katalogów, zwłaszcza `android/` i `ios/`, które zawierają kod natywny, oraz `src/`, gdzie znajduje się logika aplikacji w JavaScripcie.',
+                                children: [
+                                    { id: 'ref-2', title: 'Medium: Getting Started with React Native: A Beginner\'s Guide', type: 'medium', link: 'https://medium.com/@ahmed.nums345/getting-started-with-react-native-a-beginners-guide-cf63368bb887' },
+                                    { id: 'ref-3', title: 'Medium: Creating a simple application in React Native', type: 'medium', link: 'https://medium.com/@ahmed.nums345/getting-started-with-react-native-a-beginners-guide-cf63368bb887' },
+                                ]
+                            },
+                            { id: 't1-1-2', title: 'Fundamentalne Koncepcje React', description: 'React Native opiera się na koncepcjach z biblioteki React. Dogłębne zrozumienie JSX (składni pozwalającej pisać znaczniki wewnątrz kodu JavaScript), komponentów, zarządzania stanem (state) oraz przekazywania danych przez właściwości (props) jest absolutnie niezbędne. Należy rozróżniać historyczne podejście oparte na komponentach klasowych z metodą `this.setState` od nowoczesnego, funkcyjnego podejścia wykorzystującego haki, takie jak `useState` i `useEffect`.',
+                                children: [
+                                    { id: 'ref-4', title: 'Docs: Learn the Basics - React Native', type: 'docs', link: 'https://reactnative.dev/docs/tutorial' },
+                                ]
+                            },
+                            { id: 't1-1-3', title: 'Nawigacja i Struktura Aplikacji', description: 'Architekt musi umieć projektować przepływy w aplikacji. Nowoczesne narzędzia, takie jak `expo-router`, umożliwiają tworzenie nawigacji opartej na strukturze plików. Należy w praktyce opanować tworzenie nawigacji opartej na zakładkach (Tabs) za pomocą `<Tabs.Screen>` oraz nawigacji stosowej (Stack) przy użyciu `<Stack.Screen>`. Zrozumienie, jak organizacja plików i folderów w katalogu `app` automatycznie mapuje się na trasy w aplikacji, jest kluczowe dla budowania przejrzystej i skalowalnej struktury.',
+                                children: [
+                                    { id: 'ref-5', title: 'YouTube: React Native Course for Beginners in 2025', type: 'youtube', link: 'https://www.youtube.com/watch?v=f8Z9JyB2EIE' },
+                                    { id: 'ref-6', title: 'YouTube: The Ultimate React Native Course', type: 'youtube', link: 'https://www.youtube.com/watch?v=wbj-DuaL748' },
+                                ]
+                            },
+                            { id: 't1-1-4', title: 'Integracja z Kodem Natywnym', description: 'Architekt musi wiedzieć, kiedy możliwości React Native się kończą i konieczne jest "zejście" do warstwy natywnej. Należy nauczyć się tworzyć natywne moduły (do udostępniania natywnych API dla JavaScript) oraz natywne komponenty UI (gdy wymagany jest specyficzny, natywny element interfejsu).' },
+                            { id: 't1-1-5', title: 'Zarządzanie Stanem na Dużą Skalę', description: 'W prostych aplikacjach `useState` może być wystarczający, ale w złożonych systemach konieczne jest zastosowanie dedykowanych bibliotek do zarządzania stanem globalnym. Architekt musi znać i rozumieć kompromisy związane z popularnymi rozwiązaniami, takimi jak Redux, MobX czy Zustand, aby móc wybrać odpowiednie narzędzie do skali i złożoności projektu.' },
+                            { id: 't1-1-6', title: 'Optymalizacja Wydajności', description: 'Kluczowym zadaniem architekta jest dbanie o wydajność aplikacji. Należy opanować techniki profilowania, na przykład przy użyciu narzędzia Flipper, w celu identyfikacji "wąskich gardeł". Konieczne jest praktyczne stosowanie haków `useMemo` i `useCallback` oraz komponentu wyższego rzędu `React.memo` do unikania kosztownych, niepotrzebnych re-renderów. Szczególną uwagę należy zwrócić na optymalizację długich list za pomocą komponentu `FlatList` i jego zaawansowanych właściwości, takich jak `getItemLayout` czy `windowSize`.' },
+                            { id: 't1-1-7', title: 'Aktualizacje Bibliotek', description: 'Ogłoszenie wprost wymienia aktualizacje React Native i bibliotek trzecich jako jedną z odpowiedzialności architekta. Proces ten jest ryzykowny i wymaga wiedzy na temat potencjalnych "breaking changes". Należy zrozumieć, jak bezpiecznie przeprowadzać takie aktualizacje, jak zarządzać zależnościami i jak testować aplikację po aktualizacji.',
+                                children: [
+                                    { id: 'ref-7', title: 'YouTube: React Native Tutorial for Beginners - Codevolution', type: 'youtube', link: 'https://www.youtube.com/playlist?list=PLC3y8-rFHvwhiQJD1di4eRVN30WWCXkg1' },
+                                    { id: 'ref-8', title: 'YouTube: React Native Full Course for Beginners - Dave Gray', type: 'youtube', link: 'https://www.youtube.com/watch?v=WDunoPNBxKA' },
+                                    { id: 'ref-9', title: 'YouTube: React Native Projects - Build Food Delivery App', type: 'youtube', link: 'https://www.youtube.com/playlist?list=PLKWMD009Q4qSHIMF6Swy4VQs5z6U97LJm' },
+                                ]
+                            },
+                        ]
+                    },
+                    {
+                        id: 'sec1-2', title: 'Sekcja 1.2: Dogłębne Zrozumienie Ekosystemów Natywnych',
+                        description: 'Stanowisko architekta wymaga "dogłębnej znajomości możliwości ekosystemów Android i iOS", w tym bezpieczeństwa, przechowywania danych, sieci i najnowszych funkcji. Praca z React Native nie zwalnia z tej odpowiedzialności; wręcz przeciwnie, zrozumienie platform natywnych pozwala podejmować świadome decyzje o tym, kiedy i jak wykorzystać ich pełen potencjał. Decyzja o tym, czy daną funkcjonalność zaimplementować w JavaScripcie, czy napisać dla niej natywny moduł, jest kluczową decyzją architektoniczną, która ma bezpośredni wpływ na wydajność, koszty i czas realizacji projektu.',
+                        children: [
+                            { id: 't1-2-1', title: 'Kluczowe tematy dla iOS (Swift)', description: 'Opanowanie fundamentów języka (var/let, opcjonale, struct/class), SwiftUI, ARC, Core Data, Keychain, Bezpieczeństwo (Sandboxing, Secure Enclave, App Transport Security, Code Signing), Networking (URLSession), Współbieżność (async/await, Actors) oraz śledzenie nowości z WWDC.',
+                                children: [
+                                    { id: 'ref-10', title: 'YouTube: Swift Language Fundamentals - The Complete Beginner\'s Guide', type: 'youtube', link: 'https://m.youtube.com/watch?v=wargRHa8oKQ' },
+                                    { id: 'ref-11', title: 'Docs: Swift Tutorial - Tutorialspoint', type: 'docs', link: 'https://www.tutorialspoint.com/swift/index.htm' },
+                                    { id: 'ref-12', title: 'Medium: Getting started with Swift. A beginner\'s guide', type: 'medium', link: 'https://medium.com/the-andela-way/getting-started-with-swift-89877c42660b' },
+                                    { id: 'ref-13', title: 'Docs: breaking down use cases of different storage methods in iOS apps - Stack Overflow', type: 'docs', link: 'https://stackoverflow.com/questions/28937126/breaking-down-use-cases-of-different-storage-methods-in-ios-apps' },
+                                    { id: 'ref-14', title: 'Medium: Mobile App : Data Storage Options', type: 'medium', link: 'https://medium.com/@waghmaremayur855/mobile-app-data-storage-options-b644f10b5f6f' },
+                                    { id: 'ref-15', title: 'YouTube: iOS Architecture: Deep Dive into Security & Design Principles', type: 'youtube', link: 'https://www.youtube.com/watch?v=aKpaatBmu-E' },
+                                    { id: 'ref-16', title: 'YouTube: Deep Dive into iOS Mobile Security with Dave Poirier', type: 'youtube', link: 'https://www.youtube.com/watch?v=rIEaqVpysZI' },
+                                    { id: 'ref-17', title: 'Docs: iOS vs. Android Security: A Comprehensive Look | McAfee', type: 'docs', link: 'https://www.mcafee.com/learn/ios-vs-android-security/' },
+                                    { id: 'ref-18', title: 'YouTube: Swift Concurrency Explained?', type: 'youtube', link: 'https://www.youtube.com/watch?v=bqFiFtKheqA' },
+                                    { id: 'ref-19', title: 'YouTube: WWDC25: Embracing Swift concurrency', type: 'youtube', link: 'https://www.youtube.com/watch?v=u2rYp8AMuSg' },
+                                    { id: 'ref-20', title: 'YouTube: iOS 26 Beta 2 - What\'s New & One Major Change', type: 'youtube', link: 'https://www.youtube.com/watch?v=QlYk82aQlmc' },
+                                    { id: 'ref-21', title: 'YouTube: iOS 26 | +100 NEW Features', type: 'youtube', link: 'https://www.youtube.com/watch?v=qLDacbMpxG4' },
+                                    { id: 'ref-31', title: 'YouTube: Swift Beginner Tutorial • iOS Dev - Mitch Koko', type: 'youtube', link: 'https://www.youtube.com/watch?v=A41PjItkifQ' },
+                                ]
+                            },
+                            { id: 't1-2-2', title: 'Kluczowe tematy dla Android (Kotlin)', description: 'Opanowanie kluczowych cech Kotlina (var/val, null safety, data/sealed classes, coroutines), Jetpack Compose (funkcje kompozycyjne, stan, modyfikatory, layouty), cyklu życia komponentów, przechowywania danych (SharedPreferences, DataStore, Room, EncryptedSharedPreferences), bezpieczeństwa (uprawnienia, HTTPS, Keystore, WebView, Intent), networkingu (Retrofit, OkHttp) oraz śledzenie nowości z Google I/O.',
+                                children: [
+                                    { id: 'ref-22', title: 'Medium: Basics of Kotlin : Part 1', type: 'medium', link: 'https://medium.com/@ChindaVibhor/basics-of-kotlin-part-1-ef0eb34b14ef' },
+                                    { id: 'ref-23', title: 'Medium: Jetpack Compose Roadmap for Android Developers', type: 'medium', link: 'https://medium.com/@anandgaur2207/jetpack-compose-roadmap-for-android-developers-7c4ebbf6638f' },
+                                    { id: 'ref-24', title: 'Docs: What\'s New in Jetpack Compose - Android Developers Blog', type: 'docs', link: 'https://android-developers.googleblog.com/2025/05/whats-new-in-jetpack-compose.html' },
+                                    { id: 'ref-25', title: 'Medium: Best Security Practices in Android', type: 'medium', link: 'https://medium.com/@salil5chhabra/security-best-practices-in-android-73977fbc2daa' },
+                                    { id: 'ref-26', title: 'YouTube: Where Does Android App Store Data?', type: 'youtube', link: 'https://www.youtube.com/watch?v=IiuE6wrKQhs' },
+                                    { id: 'ref-27', title: 'Docs: Security checklist | Android Developers', type: 'docs', link: 'https://developer.android.com/privacy-and-security/security-tips' },
+                                    { id: 'ref-28', title: 'Docs: Improve your app\'s security - Android Developers', type: 'docs', link: 'https://developer.android.com/privacy-and-security/security-best-practices' },
+                                    { id: 'ref-29', title: 'YouTube: Top 3 updates for Android Developer Productivity at Google I/O \'25', type: 'youtube', link: 'https://www.youtube.com/watch?v=-GikklXjkgM' },
+                                    { id: 'ref-30', title: 'YouTube: What\'s new in Android development at Google I/O 2025 (part 1)', type: 'youtube', link: 'https://www.youtube.com/watch?v=Q_ZHnyVFqMc' },
+                                    { id: 'ref-32', title: 'YouTube: Android - Kotlin (Beginners to Advanced)', type: 'youtube', link: 'https://www.youtube.com/playlist?list=PLQ_Ai1O7sMV0LRCZJaHpl_9WLQunMqrzG' },
+                                ]
+                            },
+                            { id: 't1-2-3', title: 'Tabela porównawcza iOS vs Android', description: 'Różnice między ekosystemami to fundamentalne czynniki wpływające na strategię, budżet i harmonogram. Architekt musi umieć przełożyć te różnice na język biznesu i podejmować na ich podstawie świadome decyzje, np. argumentując za strategią "iOS-first" ze względu na mniejszą fragmentację i wyższe ARPU.',
+                                children: [
+                                    { id: 'ref-33', title: 'Medium: iOS vs Android Development in 2025: Pros, Cons, and Market Trends', type: 'medium', link: 'https://medium.com/@fahad.bdtask/ios-vs-android-development-in-2025-pros-cons-and-market-trends-you-need-to-know-8fac32781d94' },
+                                    { id: 'ref-34', title: 'Docs: Are iPhones more secure than Android phones? | NordVPN', type: 'docs', link: 'https://nordvpn.com/blog/ios-vs-android-security/' },
+                                    { id: 'ref-35', title: 'Medium: iOS vs Android: Pros and Cons for App Developers', type: 'medium', link: 'https://medium.com/@ahextechnologies/ios-vs-android-pros-and-cons-for-app-developers-4e73730cb2e1#:~:text=High%20Development%20Costs%3A%20Developing%20iOS,approval%2C%20delaying%20updates%20and%20releases.' },
+                                ]
+                            },
+                        ]
+                    },
+                    {
+                        id: 'sec1-3', title: 'Sekcja 1.3: Struktury Danych i Algorytmy w Kontekście Mobilnym',
+                        description: 'Wymóg "biegłości w budowaniu... przy użyciu różnych... struktur danych" podkreśla, że znajomość DSA nie jest teoretycznym wymogiem, a praktycznym narzędziem do rozwiązywania realnych problemów (optymalizacja wydajności, zużycie baterii/pamięci, pisanie skalowalnego kodu).',
+                        children: [
+                            { id: 't1-3-1', title: 'Praktyczne Zastosowania DSA w Aplikacjach Mobilnych', description: 'Zrozumienie, kiedy używać List vs. Map, jak Stosy modelują nawigację, Kolejki zarządzają zadaniami w tle, Drzewa reprezentują hierarchię UI, a Grafy złożone przepływy użytkownika.',
+                                children: [
+                                    { id: 'ref-36', title: 'Medium: Is It Important to Learn DSA for Mobile App Developers?', type: 'medium', link: 'https://medium.com/@anandgaur2207/is-it-important-to-learn-dsa-for-mobile-app-developers-211c497b5af4' },
+                                    { id: 'ref-37', title: 'Medium: Data Structures and Algorithms in Android', type: 'medium', link: 'https://medium.com/@anandgaur2207/data-structures-and-algorithms-in-android-4b4653c9c89c' },
+                                ]
+                            },
+                            { id: 't1-3-2', title: 'Złożoność Czasowa i Pamięciowa', description: 'Umiejętność analizy kodu pod kątem wydajności za pomocą notacji "Wielkiego O" (Big O), aby ocenić skalowalność proponowanych rozwiązań i realizować wymagania niefunkcjonalne.' },
+                        ]
+                    }
+                ]
+            },
+            {
+                id: 'module2', title: 'Moduł 2: Myślenie Architektoniczne i Wzorce Projektowe',
+                description: 'Ten moduł stanowi serce transformacji od dewelopera do architekta. Skupia się na opanowaniu fundamentalnych zasad i wzorców, które są językiem i narzędziami pracy architekta. To one pozwalają tworzyć oprogramowanie, które jest nie tylko funkcjonalne, ale także elastyczne, utrzymywalne i testowalne.',
+                children: [
+                    { id: 'sec2-1', title: 'Sekcja 2.1: Filary Jakości Oprogramowania: SOLID, TDD, BDD',
+                        description: 'Ogłoszenie o pracę wprost wymienia znajomość zasad SOLID, TDD i BDD jako kluczową kompetencję. Nie są to jedynie modne akronimy, ale fundamentalne koncepcje, które kształtują jakość nowoczesnego oprogramowania. Architekt musi je nie tylko znać, ale głęboko rozumieć i promować w zespole.',
+                        children: [
+                            { id: 't2-1-1', title: 'SOLID', description: 'Pięć zasad projektowania obiektowego (Single Responsibility, Open/Closed, Liskov Substitution, Interface Segregation, Dependency Inversion) jako narzędzia do zarządzania złożonością i zależnościami w kodzie.' },
+                            { id: 't2-1-2', title: 'Test-Driven Development (TDD)', description: 'Technika programowania, w której testy pisane są przed kodem produkcyjnym (cykl "Red-Green-Refactor"). Z perspektywy architekta, TDD jest potężnym narzędziem projektowym, zmuszającym do myślenia o interfejsie i zachowaniu komponentu przed jego implementacją.',
+                                children: [
+                                    { id: 'ref-38', title: 'Medium: TDD vs BDD vs DDD in 2025: Choosing the Right Approach', type: 'medium', link: 'https://medium.com/@sharmapraveen91/tdd-vs-bdd-vs-ddd-in-2025-choosing-the-right-approach-for-modern-software-development-6b0d3286601e' },
+                                    { id: 'ref-39', title: 'Docs: Test-Driven Development (TDD) in Kotlin for Android - Carrion.dev', type: 'docs', link: 'https://carrion.dev/en/posts/tdd-kotlin/' },
+                                ]
+                            },
+                            { id: 't2-1-3', title: 'Behavior-Driven Development (BDD)', description: 'Ewolucja TDD, kładąca nacisk na współpracę z biznesem. Scenariusze pisane w języku naturalnym (Gherkin: Given-When-Then) pozwalają weryfikować, czy architektura realizuje zamierzone cele biznesowe.',
+                                children: [
+                                    { id: 'ref-40', title: 'YouTube: TDD and BDD - What Are The Key Differences?', type: 'youtube', link: 'https://www.youtube.com/watch?v=fsSMuqIpu_c&t=0s' },
+                                    { id: 'ref-41', title: 'YouTube: What is TDD? What is Test Driven Development?', type: 'youtube', link: 'https://www.youtube.com/watch?v=H4Hf3pji7Fw' },
+                                ]
+                            },
+                        ]
+                    },
+                    { id: 'sec2-2', title: 'Sekcja 2.2: Wzorce Architektoniczne Aplikacji Mobilnych',
+                        description: 'Wybór wzorca architektonicznego to jedna z najważniejszych decyzji, wpływająca na strukturę kodu, testowalność i szybkość rozwoju. Wymaga znajomości i umiejętności oceny kompromisów związanych z każdym z nich.',
+                        children: [
+                            { id: 't2-2-1', title: 'Ewolucja Wzorców', description: 'Zrozumienie historycznego rozwoju od MVC, przez MVP, MVVM, MVI, aż do VIPER, jako próby rozwiązania problemu "Masywnego Kontrolera Widoku".' },
+                            { id: 't2-2-2', title: 'Porównanie wzorców', description: 'Analiza kompromisów między wzorcami pod kątem złożoności, testowalności, przepływu danych i separacji koncernów.',
+                                children: [
+                                    { id: 'ref-42', title: 'Docs: Mobile App Architecture to Build Robust App [Ultimate Guide]', type: 'docs', link: 'https://www.spaceotechnologies.com/blog/mobile-app-architecture/' },
+                                    { id: 'ref-43', title: 'Docs: Mobile Application Architecture: Layers, Types, Principles, Factors - Simform', type: 'docs', link: 'https://www.simform.com/blog/mobile-application-architecture/' },
+                                    { id: 'ref-44', title: 'YouTube: The Complete Guide to Android Design Patterns - Part 1', type: 'youtube', link: 'https://www.youtube.com/watch?v=lM_ipsfFGLo' },
+                                    { id: 'ref-45', title: 'YouTube: Design Patterns in iOS | Explained with examples & code', type: 'youtube', link: 'https://www.youtube.com/watch?v=_GCfJG2thOQ' },
+                                    { id: 'ref-46', title: 'Medium: How to Implement MVI with Delegates on Android', type: 'medium', link: 'https://engineering.teknasyon.com/how-to-implement-mvi-with-delegates-on-android-f2aa1a842b73' },
+                                    { id: 'ref-47', title: 'Medium: MVI Architecture with Kotlin Flows and Channels', type: 'medium', link: 'https://proandroiddev.com/mvi-architecture-with-kotlin-flows-and-channels-d36820b2028d' },
+                                    { id: 'ref-48', title: 'Medium: VIPER Design Pattern in iOS Swift', type: 'medium', link: 'https://blog.stackademic.com/viper-design-pattern-in-ios-swift-210ae011e1eb' },
+                                    { id: 'ref-49', title: 'YouTube: MVVM Tutorial for Absolute Beginners with SwiftUI (iOS 2022)', type: 'youtube', link: 'https://www.youtube.com/watch?v=H5wmKjfsz68' },
+                                    { id: 'ref-50', title: 'YouTube: MVVM in Android Studio using Kotlin | Android Knowledge', type: 'youtube', link: 'https://www.youtube.com/watch?v=DTE1dbdluh4' },
+                                    { id: 'ref-51', title: 'YouTube: MVVM Architecture in Android for Absolute Beginners', type: 'youtube', link: 'https://www.youtube.com/watch?v=7k_ErDsHF6k' },
+                                    { id: 'ref-52', title: 'Docs: How we develop using VIPER architecture in iOS - Oursky Team', type: 'docs', link: 'https://m.oursky.com/viper-ios-app-beyond-mvc-mega-viewcontroller-e2b625ac58d5' },
+                                    { id: 'ref-53', title: 'Medium: A robust MVI implementation with Jetpack Compose', type: 'medium', link: 'https://proandroiddev.com/a-robust-mvi-with-jetpack-compose-e08882d2c4ff' },
+                                ]
+                            },
+                        ]
+                    },
+                    { id: 'sec2-3', title: 'Sekcja 2.3: Katalog Niezbędnych Wzorców Projektowych',
+                        description: 'Oprócz wzorców architektonicznych, architekt musi znać zbiór klasycznych, uniwersalnych wzorców projektowych (GoF), które rozwiązują powtarzalne problemy i stanowią wspólny "słownik" dla zespołu.',
+                        children: [
+                            { id: 't2-3-1', title: 'Wzorce Kreacyjne', description: 'Dotyczące tworzenia obiektów: Singleton, Factory / Abstract Factory, Builder, Prototype.' },
+                            { id: 't2-3-2', title: 'Wzorce Strukturalne', description: 'Dotyczące kompozycji klas i obiektów: Adapter, Decorator, Facade.' },
+                            { id: 't2-3-3', title: 'Wzorce Behawioralne', description: 'Dotyczące komunikacji między obiektami: Observer, Strategy, Command.',
+                                children: [
+                                    { id: 'ref-54', title: 'YouTube: Design Patterns Video Tutorial - Derek Banas', type: 'youtube', link: 'https://www.youtube.com/playlist?list=PLF206E906175C7E07' },
+                                    { id: 'ref-55', title: 'Book: Patterns of Enterprise Application Architecture - Martin Fowler', type: 'book', link: 'https://martinfowler.com/books/eaa.html' },
+                                    { id: 'ref-56', title: 'Docs: Fowler\'s "Patterns of Enterprise Application Architecture" still relevant? - Stack Overflow', type: 'docs', link: 'https://stackoverflow.com/questions/692241/fowlers-patterns-of-enterprise-application-architecture-still-relevant' },
+                                ]
+                            },
+                        ]
+                    }
+                ]
+            },
+            {
+                id: 'module3', title: 'Moduł 3: Projektowanie Złożonych Systemów i Rozwiązań',
+                description: 'Ten moduł przenosi perspektywę z pojedynczej aplikacji mobilnej na cały ekosystem, w którym ona funkcjonuje. Nowoczesne aplikacje rzadko są samodzielnymi bytami; najczęściej są klientami dla złożonych systemów backendowych. Architekt aplikacji mobilnych musi rozumieć tę architekturę po stronie serwera, aby móc efektywnie projektować interakcje i przepływy danych.',
+                children: [
+                    { id: 'sec3-1', title: 'Sekcja 3.1: Architektura Rozproszona: Mikroserwisy i Wzorzec BFF',
+                        description: 'Ogłoszenie o pracę wspomina o podejmowaniu decyzji technicznych w kontekście "mikroserwisów". Oznacza to, że aplikacja mobilna, którą kandydat będzie współtworzył, komunikuje się z backendem zbudowanym w architekturze mikroserwisowej. Zrozumienie tej architektury i jej implikacji dla klienta mobilnego jest kluczowe.',
+                        children: [
+                            { id: 't3-1-1', title: 'Problem z Monolitycznym API', description: 'Tradycyjne podejście, w którym jeden duży, ogólny serwis API obsługuje wszystkich klientów (przeglądarkę, aplikację mobilną, IoT), jest nieefektywne ze względu na różne potrzeby tych klientów.' },
+                            { id: 't3-1-2', title: 'Wzorzec Backend for Frontend (BFF)', description: 'Rozwiązaniem jest stworzenie dedykowanej warstwy pośredniczącej (backendu) dla każdego typu klienta. BFF pełni rolę agregatora i adaptera, komunikując się z wieloma mikroserwisami i dostosowując dane do specyficznych potrzeb klienta mobilnego.',
+                                children: [
+                                    { id: 'ref-57', title: 'YouTube: Expert Guide: Backend for Frontend (BFF) in Microservices', type: 'youtube', link: 'https://www.youtube.com/watch?v=Pmzrogq4W4I' },
+                                    { id: 'ref-58', title: 'Docs: Backend for Frontend (BFF): how to improve efficiency and scalability', type: 'docs', link: 'https://francijpg.com/blogs/bff/' },
+                                    { id: 'ref-59', title: 'Medium: Backend for Frontend Basics: A Comprehensive Guide', type: 'medium', link: 'https://mobilelive.medium.com/backend-for-frontend-basics-a-comprehensive-guide-37768062e55a' },
+                                    { id: 'ref-60', title: 'Medium: Revolutionizing Application Experiences: Unlocking the Power of BFF', type: 'medium', link: 'https://medium.com/@nikhiljain1203/revolutionizing-application-experiences-unlocking-the-power-of-backend-for-frontend-bff-ba867108766c' },
+                                    { id: 'ref-61', title: 'Medium: Backend for Frontend (BFF): Building Faster, Better Experiences', type: 'medium', link: 'https://medium.com/@nomannayeem/backend-for-frontend-bff-building-faster-better-and-customized-user-experiences-9411d820fc52' },
+                                    { id: 'ref-62', title: 'YouTube: "Backends for Frontends": what is it?', type: 'youtube', link: 'https://www.youtube.com/watch?v=tmGnpU8xOGE' },
+                                    { id: 'ref-63', title: 'YouTube: Microservices Explained in 5 Minutes', type: 'youtube', link: 'https://www.youtube.com/watch?v=lL_j7ilk7rc' },
+                                    { id: 'ref-64', title: 'Docs: Seamlessly Swapping the API backend of the Netflix Android app', type: 'docs', link: 'https://netflixtechblog.com/seamlessly-swapping-the-api-backend-of-the-netflix-android-app-3d4317155187' },
+                                    { id: 'ref-65', title: 'Docs: Backends For Frontends - Netflix TechBlog', type: 'docs', link: 'https://netflixtechblog.com/tagged/backends-for-frontends' },
+                                    { id: 'ref-66', title: 'YouTube: What Is A Backend For A Frontend (BFF) Architecture Pattern', type: 'youtube', link: 'https://www.youtube.com/watch?v=SSo-z16wEnc' },
+                                ]
+                            },
+                        ]
+                    },
+                    { id: 'sec3-2', title: 'Sekcja 3.2: Projektowanie Kontraktów i Integracja API',
+                        description: 'Architekt aplikacji mobilnych jest odpowiedzialny za "projektowanie interfejsów do nowych rozwiązań" oraz "uzgadnianie kontraktów". Musi biegle poruszać się w świecie projektowania i konsumpcji API.',
+                        children: [
+                            { id: 't3-2-1', title: 'Podejście "API-First"', description: 'Metodologia, w której projektowanie kontraktu API (np. w OpenAPI/Swagger) odbywa się przed napisaniem kodu, co pozwala na równoległą pracę zespołów frontendowych i backendowych.',
+                                children: [
+                                    { id: 'ref-67', title: 'Docs: Understanding the API-First Approach to Building Products - Swagger', type: 'docs', link: 'https://swagger.io/resources/articles/adopting-an-api-first-approach/' },
+                                ]
+                            },
+                            { id: 't3-2-2', title: 'Projektowanie API RESTful vs. GraphQL', description: 'Opanowanie standardów REST (rzeczowniki w URL, metody HTTP, kody statusu) oraz znajomość alternatywy w postaci GraphQL, która pozwala klientowi prosić o dokładnie te dane, których potrzebuje.',
+                                children: [
+                                    { id: 'ref-68', title: 'Docs: Scalable API Design: Best Practices for Contract-First Development', type: 'docs', link: 'https://www.getambassador.io/blog/top-principles-api-design-robust-scalable-efficient-apis' },
+                                    { id: 'ref-69', title: 'Docs: API Design 101: Best Practices & Implementation - Strapi', type: 'docs', link: 'https://strapi.io/blog/api-design-101' },
+                                    { id: 'ref-70', title: 'Docs: API Integration for Mobile Apps: Best Practices - PixelFreeStudio Blog', type: 'docs', link: 'https://blog.pixelfreestudio.com/api-integration-for-mobile-apps-best-practices/' },
+                                    { id: 'ref-71', title: 'Docs: Enhance Mobile App Speed: Best Practices for API Optimization', type: 'docs', link: 'https://www.graycelltech.com/how-can-you-optimize-api-responses-for-better-mobile-applications-performance/' },
+                                ]
+                            },
+                            { id: 't3-2-3', title: 'Integracja z API Dostawców Zewnętrznych', description: 'Proces obejmujący Due Diligence techniczny (ocena dokumentacji, bezpieczeństwa, SLA), tworzenie warstwy abstrakcji w kodzie oraz implementację mechanizmów odporności na błędy (retry, circuit breaker).',
+                                children: [
+                                    { id: 'ref-72', title: 'Docs: Best Third Party API Integration Practices - Apriorit', type: 'docs', link: 'https://www.apriorit.com/dev-blog/third-party-api-integration-best-practices' },
+                                    { id: 'ref-73', title: 'Docs: Vendor Due Diligence Checklist: A Step-by-Step Guide - Ramp', type: 'docs', link: 'https://ramp.com/blog/vendor-due-diligence-checklist' },
+                                    { id: 'ref-74', title: 'Docs: Technical Due Diligence: Guide, Examples, and Checklist - SpdLoad', type: 'docs', link: 'https://spdload.com/blog/technical-due-diligence/' },
+                                    { id: 'ref-75', title: 'Docs: Best practice for third party integrations : r/nextjs - Reddit', type: 'docs', link: 'https://www.reddit.com/r/nextjs/comments/194j989/best-practice-for-third-party-integrations/' },
+                                ]
+                            },
+                            { id: 't3-2-4', title: 'Negocjowanie Umów SLA', description: 'Techniczny udział w negocjacjach umów z dostawcami, rozumienie kluczowych metryk (uptime) i zwracanie uwagi na definicje awarii, czas reakcji i kary umowne.',
+                                children: [
+                                    { id: 'ref-76', title: 'Docs: What is a Service Level Agreement (SLA)? Simple examples - ALVAO', type: 'docs', link: 'https://www.alvao.com/en/blog/what-service-level-agreement-sla-simple-examples' },
+                                    { id: 'ref-77', title: 'Docs: How to Draft and Negotiate Service Level Agreements - Contract Nerds', type: 'docs', link: 'https://contractnerds.com/how-to-draft-and-negotiate-service-level-agreements/' },
+                                    { id: 'ref-78', title: 'Docs: How to Request SLAs When Negotiating a Vendor Contract - Venminder', type: 'docs', link: 'https://www.venminder.com/blog/how-request-slas-negotiating-vendor-contract' },
+                                    { id: 'ref-79', title: 'Docs: Negotiating with API Providers: Strategies and Techniques - Lunar.dev', type: 'docs', link: 'https://www.lunar.dev/post/negotiating-with-api-providers-strategies-and-techniques' },
+                                ]
+                            },
+                        ]
+                    },
+                    { id: 'sec3-3', title: 'Sekcja 3.3: Zaawansowane Strategie Cachingowe',
+                        description: 'Buforowanie (caching) jest jedną z najważniejszych technik optymalizacji wydajności w systemach rozproszonych. Celem jest opanowanie różnych strategii cachingu na wielu poziomach aplikacji.',
+                        children: [
+                            { id: 't3-3-1', title: 'Poziomy Cachingu', description: 'Znajomość możliwości i kompromisów każdego poziomu: na kliencie mobilnym, w CDN, w API Gateway, w aplikacji backendowej oraz w bazie danych.',
+                                children: [
+                                    { id: 'ref-80', title: 'Docs: Caching Strategies Across Application Layers', type: 'docs', link: 'https://dev.to/budiwidhiyanto/caching-strategies-across-application-layers-building-faster-more-scalable-products-h08' },
+                                ]
+                            },
+                            { id: 't3-3-2', title: 'Strategie Populacji Cache\'a', description: 'Zrozumienie i umiejętność zastosowania strategii Cache-Aside (Lazy Loading), Write-Through oraz Write-Back (Write-Behind).',
+                                children: [
+                                    { id: 'ref-81', title: 'Docs: Caching Best Practices | Amazon Web Services', type: 'docs', link: 'https://aws.amazon.com/caching/best-practices/' },
+                                ]
+                            },
+                            { id: 't3-3-3', title: 'Polityki Usuwania z Cache\'a (Eviction Policies)', description: 'Znajomość polityk usuwania danych z cache\'a, gdy ten się zapełni: LRU (Least Recently Used), FIFO (First-In, First-Out) oraz TTL (Time To Live).',
+                                children: [
+                                    { id: 'ref-82', title: 'Docs: Strategic Data Caching for Enhanced Mobile App Experiences', type: 'docs', link: 'https://www.consagous.co/blog/strategic-data-caching-for-enhanced-mobile-app-experiences' },
+                                ]
+                            },
+                        ]
+                    },
+                    { id: 'sec3-4', title: 'Sekcja 3.4: Projektowanie Przepływu Danych i Zarządzanie Stanem',
+                        description: 'Architekt jest odpowiedzialny za projektowanie "przepływów w dedykowanych kontekstach". Dobrze zaprojektowany przepływ danych jest fundamentem stabilnej, przewidywalnej i łatwej w utrzymaniu aplikacji.',
+                        children: [
+                            { id: 't3-4-1', title: 'Jednokierunkowy Przepływ Danych (UDF)', description: 'Fundamentalna koncepcja w nowoczesnym tworzeniu UI, promowana przez React, Jetpack Compose i SwiftUI. Dane płyną w jednym kierunku: stan w dół, zdarzenia w górę, co eliminuje błędy związane z niespójnością stanu.',
+                                children: [
+                                    { id: 'ref-83', title: 'YouTube: Unidirectional Data Flow (Now in Android: A Practical Guide)', type: 'youtube', link: 'https://www.youtube.com/watch?v=ClGgn0N6-PE' },
+                                ]
+                            },
+                            { id: 't3-4-2', title: 'Wizualizacja Przepływu Danych', description: 'Umiejętność komunikowania projektowanych przepływów za pomocą Diagramów Przepływu Danych (DFD) jako narzędzia do myślenia, analizy i dokumentacji.',
+                                children: [
+                                    { id: 'ref-84', title: 'YouTube: Creating a flowchart on your phone is easier than you think', type: 'youtube', link: 'https://www.youtube.com/watch?v=iMY9MOAFaEk' },
+                                    { id: 'ref-85', title: 'YouTube: Data Flow Diagram - Designing with a DFD', type: 'youtube', link: 'https://www.youtube.com/watch?v=keJDEkjupdw&pp=0gcJCdgAo7VqN5tD' },
+                                ]
+                            },
+                        ]
+                    },
+                ]
+            },
+            {
+                id: 'module4', title: 'Moduł 4: Inżynieria Oprogramowania i DevOps w Świecie Mobile',
+                description: 'Rola architekta wykracza poza samo projektowanie. Obejmuje ona odpowiedzialność za cały cykl życia aplikacji – od jej inicjalizacji, przez budowanie i testowanie, aż po wdrożenie i monitorowanie na produkcji.',
+                children: [
+                    { id: 'sec4-1', title: 'Sekcja 4.1: Budowa Projektu od Podstaw (Scaffolding)',
+                        description: '"Scaffolding" to proces tworzenia początkowej, szkieletowej struktury projektu, która ułatwia dalszy rozwój, promuje dobre praktyki i przyspiesza wdrażanie nowych członków zespołu.',
+                        children: [
+                            { id: 't4-1-1', title: 'Struktura Katalogów i Automatyzacja Jakości Kodu', description: 'Promowanie podziału wg funkcji biznesowych, konfiguracja linterów (ESLint, SwiftLint), formatterów (Prettier) oraz pre-commit hooks (Husky, lint-staged).',
+                                children: [
+                                    { id: 'ref-86', title: 'Medium: React Native Setup for Scalable Mobile Apps', type: 'medium', link: 'https://medium.com/@afnanmohammed_33246/react-native-setup-for-scalable-mobile-apps-60f15ba2d96e' },
+                                ]
+                            },
+                            { id: 't4-1-2', title: 'Zarządzanie Konfiguracją i Bibliotekami', description: 'Implementacja mechanizmów do zarządzania konfiguracją środowisk (np. `react-native-config`) oraz automatyzacja tworzenia wewnętrznych bibliotek komponentów (np. za pomocą `react-native-builder-bob`).',
+                                children: [
+                                    { id: 'ref-87', title: 'Medium: Building a Scalable React Native Design System', type: 'medium', link: 'https://medium.com/@03balogun/react-native-design-system-a-guide-to-scaffolding-and-private-npm-publishing-79d34341c230' },
+                                ]
+                            },
+                        ]
+                    },
+                    { id: 'sec4-2', title: 'Sekcja 4.2: Automatyzacja Procesów (CI/CD)',
+                        description: 'Ciągła Integracja i Ciągłe Wdrażanie to praktyki automatyzujące proces budowania, testowania i wydawania aplikacji. Dla architekta, pipeline CI/CD jest kluczowym narzędziem do egzekwowania standardów jakości.',
+                        children: [
+                            { id: 't4-2-1', title: 'Typowy Pipeline dla Aplikacji Mobilnych', description: 'Zrozumienie kroków: Commit & Build, Test, Podpisywanie i Pakowanie (Sign & Package) oraz Wdrożenie (Deploy) do testerów lub sklepów.',
+                                children: [
+                                    { id: 'ref-88', title: 'Medium: How CI/CD Streamline Mobile App Development Process', type: 'medium', link: 'https://blog.stackademic.com/how-ci-cd-streamline-mobile-app-development-process-28b5a3ef7225' },
+                                    { id: 'ref-89', title: 'Docs: Beginner\'s Guide to Mobile App CI/CD Pipeline - Poppins Labs', type: 'docs', link: 'https://www.poppinslabs.com/blog/mobile-app-ci-cd-pipeline' },
+                                    { id: 'ref-90', title: 'YouTube: What is CI/CD, and how to use it for mobile apps?', type: 'youtube', link: 'https://www.youtube.com/watch?v=BDIOx1QySQs' },
+                                    { id: 'ref-91', title: 'YouTube: How to Set Up CI CD for Android Using GitHub Actions', type: 'youtube', link: 'https://www.youtube.com/watch?v=Fh4UyfqeB4Y' },
+                                ]
+                            },
+                            { id: 't4-2-2', title: 'Narzędzia', description: 'Znajomość rynku narzędzi CI/CD, od uniwersalnych (Jenkins, GitHub Actions) po wyspecjalizowane w mobile (Bitrise, Codemagic) oraz narzędzi automatyzujących proces wydawniczy (Fastlane).' },
+                        ]
+                    },
+                    { id: 'sec4-3', title: 'Sekcja 4.3: Kompleksowa Strategia Testowania',
+                        description: 'Architekt musi umieć zaprojektować całościową, wielopoziomową strategię testowania, która efektywnie zarządza ryzykiem i zapewnia niezawodność produktu.',
+                        children: [
+                            { id: 't4-3-1', title: 'Piramida Testów', description: 'Fundamentalna koncepcja zakładająca, że najwięcej powinno być szybkich testów jednostkowych, mniej testów integracyjnych, a najmniej wolnych testów E2E.',
+                                children: [
+                                    { id: 'ref-92', title: 'Docs: Testing strategies | Test your app on Android - Android Developers', type: 'docs', link: 'https://developer.android.com/training/testing/fundamentals/strategies' },
+                                ]
+                            },
+                            { id: 't4-3-2', title: 'Projektowanie Strategii Testowania', description: 'Priorytetyzacja oparta na ryzyku, łączenie testów automatycznych i manualnych, oraz weryfikacja na prawdziwych urządzeniach vs. emulatorach.',
+                                children: [
+                                    { id: 'ref-93', title: 'Docs: 10-Step Mobile App Testing Strategy - TestDevLab', type: 'docs', link: 'https://www.testdevlab.com/blog/10-step-mobile-app-testing-strategy' },
+                                    { id: 'ref-94', title: 'YouTube: Mobile App Testing Explained: Best Practices for Success', type: 'youtube', link: 'https://www.youtube.com/watch?v=iHDy3xcfH6U' },
+                                    { id: 'ref-95', title: 'YouTube: Best Practices for Testing Mobile Applications | QA Guide 2025', type: 'youtube', link: 'https://www.youtube.com/watch?v=0dD8xSi2dN0' },
+                                ]
+                            },
+                        ]
+                    },
+                    { id: 'sec4-4', title: 'Sekcja 4.4: Monitoring, Obserwowalność i Dostępność',
+                        description: 'Praca architekta nie kończy się w momencie wdrożenia. Wymaga proaktywnego monitorowania aplikacji na produkcji, aby szybko wykrywać i diagnozować problemy.',
+                        children: [
+                            { id: 't4-4-1', title: 'Monitoring vs. Obserwowalność', description: 'Zrozumienie różnicy: Monitoring odpowiada "czy system działa?", a Obserwowalność "dlaczego system nie działa?".' },
+                            { id: 't4-4-2', title: 'Kluczowe Metryki w Mobile APM', description: 'Śledzenie wydajności (startup time, frozen frames), stabilności (crash rate, ANR), komunikacji sieciowej (latency) i zużycia zasobów.',
+                                children: [
+                                    { id: 'ref-96', title: 'YouTube: Common Ways to Monitor Mobile Applications', type: 'youtube', link: 'https://www.youtube.com/watch?v=dQVuDZG6Y2I' },
+                                    { id: 'ref-97', title: 'Docs: Mobile application performance monitoring (MAPM) - Embrace.io', type: 'docs', link: 'https://embrace.io/guides/mobile-application-performance-monitoring/' },
+                                    { id: 'ref-98', title: 'Docs: Optimizing Mobile App Performance: Best Practices', type: 'docs', link: 'https://middleware.io/blog/mobile-app-performance-best-practices/' },
+                                ]
+                            },
+                            { id: 't4-4-3', title: 'Narzędzia', description: 'Znajomość ekosystemu narzędzi do raportowania awarii (Firebase Crashlytics, Sentry), monitoringu wydajności (New Relic, Dynatrace) i analityki produktowej (Amplitude, Mixpanel).',
+                                children: [
+                                    { id: 'ref-99', title: 'YouTube: 3 App Analytics Tools I Use To Build SUCCESSFUL Apps', type: 'youtube', link: 'https://www.youtube.com/watch?v=JaAC8tVSfvU' },
+                                ]
+                            },
+                        ]
+                    },
+                ]
+            },
+            {
+                id: 'module5', title: 'Moduł 5: Kompetencje Biznesowe i Przywódcze Architekta',
+                description: 'Ten moduł jest zwieńczeniem ścieżki rozwoju i skupia się na kompetencjach, które najsilniej odróżniają wybitnego architekta od starszego dewelopera. Zgodnie z ogłoszeniem, architekt musi rozumieć biznes, potrafić komunikować swoje decyzje oraz szacować ich wpływ finansowy.',
+                children: [
+                    { id: 'sec5-1', title: 'Sekcja 5.1: Definiowanie Wymagań Niefunkcjonalnych (NFRs)',
+                        description: 'Jedną z kluczowych odpowiedzialności architekta jest "aktywny udział w definiowaniu atrybutów jakościowych zgodnie z NFRs". To właśnie te wymagania, a nie funkcjonalne, najsilniej kształtują architekturę systemu.',
+                        children: [
+                            { id: 't5-1-1', title: 'Czym są Wymagania Niefunkcjonalne (NFRs)?', description: 'Są to wymagania, które opisują *jak* system ma działać, a nie *co* ma robić. Dotyczą one atrybutów jakościowych, takich jak wydajność, bezpieczeństwo, skalowalność, niezawodność, użyteczność czy utrzymywalność.',
+                                children: [
+                                    { id: 'ref-100', title: 'Docs: Non-Functional Requirements: Tips, Tools, and Examples | Perforce', type: 'docs', link: 'https://www.perforce.com/blog/alm/what-are-non-functional-requirements-examples' },
+                                ]
+                            },
+                            { id: 't5-1-2', title: 'Jak Definiować Dobre NFRs?', description: 'Kluczem jest mierzalność i testowalność. Zamiast pisać "aplikacja ma być szybka", należy sformułować wymaganie jako "95% zapytań do API o listę produktów musi być obsłużonych w czasie poniżej 200ms".',
+                                children: [
+                                    { id: 'ref-101', title: 'Docs: A Guide to Writing Non-Functional Requirements for Your Mobile App - Perpetio', type: 'docs', link: 'https://perpet.io/blog/a-guide-to-writing-non-functional-requirements-for-your-mobile-app/' },
+                                ]
+                            },
+                            { id: 't5-1-3', title: 'Łączenie NFRs z Celami Biznesowymi', description: 'Architekt musi zawsze zadawać pytanie "dlaczego?". Zrozumienie, że np. każda minuta niedostępności generuje straty finansowe, pozwala na podejmowanie świadomych kompromisów.',
+                                children: [
+                                    { id: 'ref-102', title: 'YouTube: What are Non-functional Requirements and How Do They Work?', type: 'youtube', link: 'https://www.youtube.com/watch?v=fc-5HJPBZMQ' },
+                                    { id: 'ref-103', title: 'YouTube: Solution Architect : Non-Functional Requirements', type: 'youtube', link: 'https://www.youtube.com/watch?v=v1q8xVmRx8c' },
+                                ]
+                            },
+                        ]
+                    },
+                    { id: 'sec5-2', title: 'Sekcja 5.2: Sztuka Komunikacji Architektury',
+                        description: 'Architekt, który nie potrafi skutecznie komunikować swoich decyzji, jest nieskuteczny, niezależnie od swojej wiedzy technicznej. Ogłoszenie podkreśla rolę komunikacji z zespołami i innymi interesariuszami.',
+                        children: [
+                            { id: 't5-2-1', title: 'Dostosowanie Komunikatu do Odbiorcy', description: 'To fundamentalna zasada. Inaczej rozmawia się z zespołem deweloperskim, a inaczej z menedżerem produktu czy dyrektorem finansowym, których interesuje wpływ decyzji na biznes, koszty, ryzyko i harmonogram.',
+                                children: [
+                                    { id: 'ref-104', title: 'Docs: Mastering Communication Skills for Success as a Technical Architect - MoldStud', type: 'docs', link: 'https://moldstud.com/articles/p-developing-effective-communication-skills-as-a-technical-architect' },
+                                    { id: 'ref-105', title: 'Docs: Architecture Decision Playbook: Mastering Technical Communication', type: 'docs', link: 'https://www.myshyft.com/blog/architecture-decision-communication/' },
+                                    { id: 'ref-106', title: 'Docs: How to Have More Effective Conversations with Business Stakeholders About Software Architecture - InfoQ', type: 'docs', link: 'https://www.infoq.com/articles/effective-architecture-conversations/' },
+                                ]
+                            },
+                            { id: 't5-2-2', title: 'Narzędzia Komunikacji', description: 'Używanie standardów do wizualizacji (np. Model C4) oraz lekkich dokumentów do opisu decyzji (Architecture Decision Records - ADRs), które zawierają kontekst, rozważane alternatywy i uzasadnienie wyboru.',
+                                children: [
+                                    { id: 'ref-107', title: 'Medium: Communicating Architecture Decisions Effectively', type: 'medium', link: 'https://medium.com/@anasanjaria/communicating-architecture-decisions-effectively-4952f516a075' },
+                                ]
+                            },
+                        ]
+                    },
+                    { id: 'sec5-3', title: 'Sekcja 5.3: Myślenie Biznesowe i Analiza Finansowa',
+                        description: 'Najwyższy poziom kompetencji architekta to umiejętność myślenia w kategoriach biznesowych. Ogłoszenie wprost wymaga "rozumienia sterowników biznesowych" oraz "zdolności do proponowania i szacowania wpływu finansowego alternatywnych rozwiązań architektonicznych".',
+                        children: [
+                            { id: 't5-3-1', title: 'Zrozumienie Sterowników Biznesowych (Business Drivers)', description: 'Architekt musi rozumieć, co napędza biznes (szybki wzrost, redukcja kosztów, innowacyjność, stabilność) i dostosowywać do tego decyzje architektoniczne.',
+                                children: [
+                                    { id: 'ref-108', title: 'Docs: What are architectural drivers in software development? | Appunite', type: 'docs', link: 'https://www.appunite.com/blog/what-are-architectural-drivers-in-software-development' },
+                                    { id: 'ref-109', title: 'Docs: Driver Modeling | Enterprise Architect User Guide - Sparx Systems', type: 'docs', link: 'https://sparxsystems.com/enterprise_architect_user_guide/17.1/guide_books/driver_modeling.html' },
+                                ]
+                            },
+                            { id: 't5-3-2', title: 'Szacowanie Wpływu Finansowego (Total Cost of Ownership - TCO)', description: 'TCO to metodologia analizy finansowej, która uwzględnia wszystkie koszty związane z danym rozwiązaniem przez cały jego cykl życia (wytworzenie, wdrożenie, utrzymanie, wsparcie, licencje, infrastruktura). Architekt musi umieć przygotować uproszczoną analizę TCO dla alternatywnych rozwiązań.',
+                                children: [
+                                    { id: 'ref-110', title: 'Docs: Total Cost Of Ownership (TCO) Collection - CIO Portal', type: 'docs', link: 'https://cioindex.com/references/total-cost-of-ownership-tco/' },
+                                    { id: 'ref-111', title: 'Docs: Understanding Total Cost of Ownership (TCO) in Cloud Computing - CloudOptimo', type: 'docs', link: 'https://www.cloudoptimo.com/blog/understanding-total-cost-of-ownership-tco-in-cloud-computing/' },
+                                    { id: 'ref-112', title: 'Medium: How to Calculate Total Cost of Ownership in 5 Easy Steps', type: 'medium', link: 'https://hardiks.medium.com/how-to-calculate-total-cost-of-ownership-in-5-easy-steps-e0e999edde85' },
+                                ]
+                            },
+                            { id: 't5-3-3', title: 'Podstawy FinOps i Szacowanie Kosztów Chmury', description: 'Zrozumienie modeli cenowych chmury (pay-as-you-go, reserved/spot instances), umiejętność korzystania z kalkulatorów cenowych (AWS, Azure, GCP) oraz rozróżnienie między CapEx a OpEx.',
+                                children: [
+                                    { id: 'ref-113', title: 'YouTube: How Cloud Pricing Comparision Made by Architect', type: 'youtube', link: 'https://www.youtube.com/watch?v=0oNJgigSxpI' },
+                                    { id: 'ref-114', title: 'YouTube: Cloud Adoption Essentials: Cloud Cost Fundamentals', type: 'youtube', link: 'https://www.youtube.com/watch?v=7zIBL2DrYRw' },
+                                    { id: 'ref-115', title: 'YouTube: An Introduction to Software Cost Estimation', type: 'youtube', link: 'https://www.youtube.com/watch?v=2xeCNmdeCh8' },
+                                    { id: 'ref-116', title: 'YouTube: Software Cost Estimating – Friend or Foe (to Agilists)?', type: 'youtube', link: 'https://www.youtube.com/watch?v=8sDP8YBGy4I' },
+                                    { id: 'ref-117', title: 'YouTube: Integrating Corporate Strategy with Software Architecture Choices', type: 'youtube', link: 'https://www.youtube.com/watch?v=0smhlmzsttk' },
+                                    { id: 'ref-118', title: 'YouTube: How to estimate your cloud cost Part 2', type: 'youtube', link: 'https://www.youtube.com/watch?v=PiuwRqA_p5M' },
+                                    { id: 'ref-119', title: 'YouTube: Cloud Cost Management | Cost Estimation', type: 'youtube', link: 'https://www.youtube.com/watch?v=AClFr_eBPXI' },
+                                ]
+                            },
+                        ]
+                    }
+                ]
+            }
+        ];
+
+        const STORAGE_KEY = 'learningChecklistState_v5';
+        const container = document.getElementById('checklist-container');
+        let checkedState = new Set(JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'));
+
+        function getIcon(item) {
+            const icons = {
+                youtube: `<svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`,
+                medium: `<svg class="icon" fill="currentColor" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="M5.924 3.003c.185.011.34.022.463.022.413 0 .718-.11.923-.33.204-.22.307-.538.307-.954V1.72c0-.39-.102-.68-.307-.87-.205-.19-.509-.285-.923-.285-.123 0-.28.01-.464.03v.015h-.008v7.31h.008V10.2c0 .39.102.68.307.87.205.19.51.285.924.285.123 0 .279-.01.464-.03v.015h.008V3.018h-.008v-.015Zm4.228 7.217-2.03-3.832v-.01L6.105 3.003h-.068v7.215h.057V3.27l2.03 3.831v.01l2.046 3.385h.057v-7.48h-.057v7.215h-.012Z"/><path d="M12.793 3.018h-.057v7.195h.057V6.543l1.173 3.672h.068V3.018h-.057v3.425L12.81 3.018h-.017Z"/></svg>`,
+                docs: `<svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>`,
+                book: `<svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>`
+            };
+            return icons[item.type] || '';
+        }
+
+        function renderChecklist(items, parentId = null, level = 0) {
+            const ul = document.createElement('ul');
+            if (level > 0) ul.classList.add('nested-list');
+
+            items.forEach(item => {
+                const li = document.createElement('li');
+                li.className = 'checklist-item-container';
+                li.dataset.id = item.id;
+                if (parentId) {
+                    li.dataset.parentId = parentId;
+                }
+
+                let childrenHtml = '';
+                if (item.children) {
+                    childrenHtml = renderChecklist(item.children, item.id, level + 1).outerHTML;
+                }
+                
+                let geminiExplainBtn = '';
+                if(item.description && !item.id.startsWith('sec') && !item.id.startsWith('module') && !item.id.startsWith('intro')) {
+                     geminiExplainBtn = `<button class="gemini-btn gemini-explain-btn" data-id="${item.id}">Wyjaśnij prościej ✨</button>`;
+                }
+
+                let titleClass = 'topic-title';
+                if (level === 0) titleClass = 'module-title';
+                else if (level === 1) titleClass = 'section-title';
+                
+                let descriptionHtml = '';
+                if (item.description) {
+                    descriptionHtml = `<span class="topic-description">${item.description}</span>`;
+                }
+
+                let itemContent;
+                if (item.link) {
+                    titleClass = 'resource-item';
+                    const icon = getIcon(item);
+                    itemContent = `${icon} <a href="${item.link}" target="_blank" rel="noopener noreferrer">${item.title}</a>`;
+                } else {
+                    itemContent = item.title;
+                }
+                
+                let progressBarHtml = '';
+                if (level === 0 && item.id.startsWith('module')) {
+                    progressBarHtml = `
+                        <div class="module-progress mt-2 mb-4">
+                            <div id="progress-${item.id}" class="progress-bar" style="width: 0%;"></div>
+                        </div>
+                    `;
+                }
+                
+                let geminiProjectBtn = '';
+                 if (item.id.startsWith('sec')) {
+                    geminiProjectBtn = `<button class="gemini-project-btn" data-id="${item.id}">Zaproponuj projekt praktyczny ✨</button>`;
+                }
+
+                li.innerHTML = `
+                    <div class="checklist-item">
+                        <input type="checkbox" id="${item.id}" data-id="${item.id}" ${checkedState.has(item.id) ? 'checked' : ''}>
+                        <label for="${item.id}">
+                            <span class="${titleClass}">
+                                ${itemContent}
+                                ${geminiExplainBtn}
+                            </span>
+                            ${descriptionHtml}
+                        </label>
+                    </div>
+                    ${childrenHtml}
+                    ${geminiProjectBtn}
+                `;
+                ul.appendChild(li);
+            });
+            return ul;
+        }
+
+        function updateParentState(parentId) {
+            if (!parentId) return;
+            const parentCheckbox = document.getElementById(parentId);
+            if (!parentCheckbox) return;
+
+            const children = Array.from(document.querySelectorAll(`[data-parent-id="${parentId}"]`));
+            const allChildrenChecked = children.length > 0 && children.every(child => document.getElementById(child.dataset.id).checked);
+
+            if (parentCheckbox.checked !== allChildrenChecked) {
+                parentCheckbox.checked = allChildrenChecked;
+                if (allChildrenChecked) {
+                    checkedState.add(parentId);
+                } else {
+                    checkedState.delete(parentId);
+                }
+                const grandparentElement = document.querySelector(`[data-id="${parentId}"]`);
+                if (grandparentElement) {
+                    const grandparentId = grandparentElement.dataset.parentId;
+                    updateParentState(grandparentId);
+                }
+            }
+        }
+        
+        function updateChildrenState(parentId, isChecked) {
+            const children = Array.from(document.querySelectorAll(`[data-parent-id="${parentId}"]`));
+            children.forEach(child => {
+                const childCheckbox = document.getElementById(child.dataset.id);
+                if (childCheckbox.checked !== isChecked) {
+                    childCheckbox.checked = isChecked;
+                    if (isChecked) {
+                        checkedState.add(child.dataset.id);
+                    } else {
+                        checkedState.delete(child.dataset.id);
+                    }
+                    updateChildrenState(child.dataset.id, isChecked);
+                }
+            });
+        }
+
+        function updateProgress() {
+            learningPlan.forEach(module => {
+                if (!module.id.startsWith('module')) return;
+
+                const moduleElement = document.getElementById(module.id);
+                if (!moduleElement) return;
+
+                const parentLi = moduleElement.closest('.checklist-item-container');
+                const allCheckboxesInModule = Array.from(parentLi.querySelectorAll('input[type="checkbox"]'));
+                
+                const allChildren = allCheckboxesInModule.filter(cb => cb.id !== module.id);
+                const checkedChildren = allChildren.filter(cb => cb.checked);
+                
+                const percentage = allChildren.length > 0 ? (checkedChildren.length / allChildren.length) * 100 : (document.getElementById(module.id).checked ? 100 : 0);
+                
+                const progressBar = document.getElementById(`progress-${module.id}`);
+                if(progressBar) {
+                    progressBar.style.width = `${percentage}%`;
+                }
+            });
+        }
+        
+        // --- Gemini API Integration ---
+        const modal = document.getElementById('gemini-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalBody = document.getElementById('modal-body');
+        const modalCloseBtn = document.getElementById('modal-close-btn');
+
+        function showModal(title) {
+            modalTitle.textContent = title;
+            modalBody.innerHTML = '<div class="loader"></div>';
+            modal.classList.add('visible');
+        }
+
+        function hideModal() {
+            modal.classList.remove('visible');
+        }
+
+        async function callGemini(prompt) {
+            const apiKey = ""; 
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+            const payload = {
+                contents: [{ role: "user", parts: [{ text: prompt }] }]
+            };
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Błąd API: ${response.statusText}`);
+                }
+
+                const result = await response.json();
+                if (result.candidates && result.candidates.length > 0 && result.candidates[0].content && result.candidates[0].content.parts && result.candidates[0].content.parts.length > 0) {
+                    return result.candidates[0].content.parts[0].text;
+                } else {
+                    return "Nie udało się uzyskać odpowiedzi od Gemini.";
+                }
+            } catch (error) {
+                console.error("Błąd wywołania Gemini API:", error);
+                return `Wystąpił błąd: ${error.message}`;
+            }
+        }
+
+        function findItemById(id, items = learningPlan) {
+            for (const item of items) {
+                if (item.id === id) return item;
+                if (item.children) {
+                    const found = findItemById(id, item.children);
+                    if (found) return found;
+                }
+            }
+            return null;
+        }
+
+        container.addEventListener('click', async (e) => {
+            if (e.target.classList.contains('gemini-explain-btn')) {
+                e.preventDefault();
+                const itemId = e.target.dataset.id;
+                const item = findItemById(itemId);
+                if (item) {
+                    showModal(`Wyjaśnienie: ${item.title}`);
+                    const prompt = `Wyjaśnij prostymi słowami, jak dla początkującego programisty, następujące zagadnienie: "${item.title}". Opis: ${item.description}. Skup się na kluczowych koncepcjach i podaj prostą analogię, jeśli to możliwe. Odpowiedz w języku polskim.`;
+                    const explanation = await callGemini(prompt);
+                    modalBody.innerHTML = explanation.replace(/\n/g, '<br>');
+                }
+            }
+            
+            if (e.target.classList.contains('gemini-project-btn')) {
+                e.preventDefault();
+                const sectionId = e.target.dataset.id;
+                const section = findItemById(sectionId);
+                if (section && section.children) {
+                    showModal(`Projekt dla: ${section.title}`);
+                    const topicTitles = section.children.filter(c => c.id.startsWith('t')).map(c => c.title).join(', ');
+                    const prompt = `Na podstawie poniższych tematów do nauki: ${topicTitles}, zaproponuj mały, praktyczny projekt do zrealizowania dla dewelopera mobilnego. Opisz cel projektu i wymień 3-5 kluczowych funkcji do zaimplementowania. Odpowiedz w języku polskim w formacie Markdown.`;
+                    const projectIdea = await callGemini(prompt);
+                    modalBody.innerHTML = projectIdea.replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\*(.*?)\*/g, '<em>$1</em>');
+                }
+            }
+        });
+        
+        modalCloseBtn.addEventListener('click', hideModal);
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                hideModal();
+            }
+        });
+
+
+        // Initial render
+        container.appendChild(renderChecklist(learningPlan));
+        updateProgress();
+    </script>
+</body>
+</html>
