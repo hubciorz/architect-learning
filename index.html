@@ -843,5 +843,22 @@
         container.appendChild(renderChecklist(learningPlan));
         updateProgress();
     </script>
+    <script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Get all checkboxes
+  const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+  // Restore checkbox states from localStorage
+  checkboxes.forEach(function(checkbox) {
+    const saved = localStorage.getItem('checkbox_' + checkbox.id);
+    if (saved !== null) {
+      checkbox.checked = saved === 'true';
+    }
+    // Listen for changes and save to localStorage
+    checkbox.addEventListener('change', function() {
+      localStorage.setItem('checkbox_' + checkbox.id, checkbox.checked);
+    });
+  });
+});
+</script>
 </body>
 </html>
